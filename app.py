@@ -58,4 +58,4 @@ if st.button("Predict Price"):
         pollution_level,
         poverty_level
     )
-    st.success(f"💰 Predicted Price: {price:.2f} USD")
+    st.success(f" Predicted Price: {price:.2f} USD")

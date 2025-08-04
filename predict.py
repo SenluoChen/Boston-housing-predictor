@@ -1,7 +1,7 @@
 import joblib
 import pandas as pd
 
-# 載入模型與特徵名稱
+
 model = joblib.load("models/model.pkl")
 feature_names = joblib.load("models/feature_names.pkl")
 
