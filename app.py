@@ -1,55 +1,61 @@
 import streamlit as st
-import numpy as np
-import pandas as pd
 import joblib
+import pandas as pd
 
-# 載入訓練好的模型
-model_log = joblib.load("model_log.pkl")
-X = joblib.load("X_columns.pkl")  # 訓練時用的特徵 DataFrame
+# Load model and feature names
+model = joblib.load("models/model.pkl")
+feature_names = joblib.load("models/feature_names.pkl")
 
-st.title("🏠 房價預測器")
+def predict_custom_house(next_to_river, nr_rooms, students_per_classroom, distance_to_town, pollution_level, poverty_level):
+    # Map UI inputs to the features expected by the trained model
+    input_data = pd.DataFrame([{
+        'CRIM': 0.1,  # default value
+        'ZN': 0,
+        'INDUS': 5,
+        'NOX': 0.4 if pollution_level == 'high' else 0.2,
+        'RM': nr_rooms,
+        'AGE': 30,
+        'DIS': distance_to_town,
+        'TAX': 200,
+        'PTRATIO': students_per_classroom / 2,
+        'B': 350,
+        'LSTAT': 10 if poverty_level == 'high' else 5,
+        'CHAS_num': 1 if next_to_river else 0,
+        'CHAS_binary': 1 if next_to_river else 0,
+        'CHAS_1': 1 if next_to_river else 0,
+        'RAD_2': 0,
+        'RAD_24': 0,
+        'RAD_3': 0,
+        'RAD_4': 1,
+        'RAD_5': 0,
+        'RAD_6': 0,
+        'RAD_7': 0,
+        'RAD_8': 0,
+        'CHAS_label_Yes': 1 if next_to_river else 0
+    }])[feature_names]
 
-# 使用者輸入
-next_to_river = st.checkbox("是否臨河 (CHAS)")
-nr_rooms = st.slider("房間數 (RM)", 1, 10, 6)
-students_per_classroom = st.slider("每班學生數 (PTRATIO)", 10, 30, 20)
-distance_to_town = st.slider("距離市中心 (DIS)", 1, 12, 5)
-pollution_level = st.selectbox("污染程度 (NOX)", ["低", "中", "高"])
-poverty_level = st.selectbox("貧困程度 (LSTAT)", ["低", "中", "高"])
+    return model.predict(input_data)[0]
 
-if st.button("預測房價"):
-    # 1️⃣ 用平均特徵作為基準
-    X_encoded = pd.get_dummies(X)
-    feature_names = model_log.feature_names_in_
-    avg_features = pd.DataFrame([X_encoded.mean()], columns=X_encoded.columns)
+# --------------------- Streamlit UI ---------------------
+st.title("🏠 Boston Housing Price Predictor")
+st.write("Enter house information to get an instant price prediction!")
 
-    # 2️⃣ 補齊缺少的欄位
-    for col in feature_names:
-        if col not in avg_features.columns:
-            avg_features[col] = 0
-    avg_features = avg_features[feature_names]
+# UI Components
+next_to_river = st.checkbox("Is the house next to the river?")
+nr_rooms = st.number_input("Number of rooms", min_value=1, max_value=20, value=5)
+students_per_classroom = st.number_input("Students per classroom", min_value=1, max_value=100, value=20)
+distance_to_town = st.number_input("Distance to town (km)", min_value=0.0, max_value=50.0, value=5.0)
+pollution_level = st.selectbox("Pollution level", ["low", "high"])
+poverty_level = st.selectbox("Poverty level", ["low", "high"])
 
-    # 3️⃣ 設定使用者輸入
-    avg_features["CHAS_1"] = 1 if next_to_river else 0
-    avg_features["RM"] = nr_rooms
-    avg_features["PTRATIO"] = students_per_classroom
-    avg_features["DIS"] = distance_to_town
-
-    if pollution_level == "低":
-        avg_features["NOX"] = X.NOX.quantile(0.25)
-    elif pollution_level == "中":
-        avg_features["NOX"] = X.NOX.quantile(0.5)
-    else:
-        avg_features["NOX"] = X.NOX.quantile(0.75)
-
-    if poverty_level == "低":
-        avg_features["LSTAT"] = X.LSTAT.quantile(0.25)
-    elif poverty_level == "中":
-        avg_features["LSTAT"] = X.LSTAT.quantile(0.5)
-    else:
-        avg_features["LSTAT"] = X.LSTAT.quantile(0.75)
-
-    # 4️⃣ 預測
-    log_price_pred = model_log.predict(avg_features)[0]
-    price_pred = np.exp(log_price_pred)
-    st.success(f"預測房價: {price_pred:.2f} 美元")
+# Prediction button
+if st.button("Predict Price"):
+    price = predict_custom_house(
+        next_to_river,
+        nr_rooms,
+        students_per_classroom,
+        distance_to_town,
+        pollution_level,
+        poverty_level
+    )
+    st.success(f"💰 Predicted Price: {price:.2f} USD")
